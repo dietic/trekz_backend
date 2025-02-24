@@ -1,0 +1,125 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  password     String
+  profile      UserProfile? @relation(fields: [profileId], references: [id])
+  profileId    String?      @unique
+  createdCrews Crew[]       @relation("CrewCreator")
+  crewMembers  CrewMember[]
+  createdAt    DateTime     @default(now())
+}
+
+model UserProfile {
+  id          String     @id @default(uuid())
+  name        String
+  lastName    String
+  documentId  String
+  dateOfBirth DateTime
+  country     String
+  address     String
+  user        User?      @relation // REMOVED FIELDS/REFERENCES HERE
+  userId      String?    @unique
+  documents   Document[]
+  createdAt   DateTime   @default(now())
+}
+
+model Crew {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  createdBy   User         @relation("CrewCreator", fields: [createdById], references: [id])
+  createdById String
+  members     CrewMember[]
+  trips       Trip[]
+  createdAt   DateTime     @default(now())
+
+  @@map("crews")
+}
+
+// MANY-TO-MANY BETWEEN USERS AND CREWS  
+model CrewMember {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  crew      Crew     @relation(fields: [crewId], references: [id])
+  crewId    String
+  createdAt DateTime @default(now())
+
+  @@map("crew_members")
+}
+
+model Trip {
+  id          String        @id @default(uuid())
+  name        String
+  crew        Crew          @relation(fields: [crewId], references: [id])
+  crewId      String
+  planeInfo   PlaneInfo[]
+  housingInfo HousingInfo[]
+  activities  Activity[]
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime      @default(now())
+
+  @@map("trips")
+}
+
+model PlaneInfo {
+  id                String   @id @default(uuid())
+  departureDateTime DateTime
+  arrivalDateTime   DateTime
+  airport           String
+  reservationCode   String
+  trip              Trip     @relation(fields: [tripId], references: [id])
+  tripId            String
+
+  @@map("plane_info")
+}
+
+model HousingInfo {
+  id               String   @id @default(uuid())
+  address          String
+  checkinDateTime  DateTime
+  checkoutDateTime DateTime
+  trip             Trip     @relation(fields: [tripId], references: [id])
+  tripId           String
+
+  @@map("housing_info")
+}
+
+model Activity {
+  id       String   @id @default(uuid())
+  name     String
+  datetime DateTime
+  location String
+  trip     Trip     @relation(fields: [tripId], references: [id])
+  tripId   String
+
+  @@map("activities")
+}
+
+model Document {
+  id         String      @id @default(uuid())
+  type       String // "PASSPORT", "VISA", "TICKET"  
+  url        String // STORE IN S3/CLOUDFLARE R2  
+  expiryDate DateTime
+  profile    UserProfile @relation(fields: [profileId], references: [id])
+  profileId  String
+
+  @@map("documents")
+}
