@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
@@ -19,24 +16,30 @@ model User {
   email        String       @unique
   password     String
   profile      UserProfile? @relation(fields: [profileId], references: [id])
-  profileId    String?      @unique
+  profileId    String?      @unique @map("profile_id")
   createdCrews Crew[]       @relation("CrewCreator")
   crewMembers  CrewMember[]
-  createdAt    DateTime     @default(now())
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  @@map("users")
 }
 
 model UserProfile {
   id          String     @id @default(uuid())
   name        String
-  lastName    String
-  documentId  String
-  dateOfBirth DateTime
+  lastName    String     @map("last_name")
+  documentId  String     @map("document_id")
+  dateOfBirth DateTime   @map("date_of_birth")
   country     String
   address     String
-  user        User?      @relation // REMOVED FIELDS/REFERENCES HERE
-  userId      String?    @unique
+  user        User?
+  userId      String?    @unique @map("user_id")
   documents   Document[]
-  createdAt   DateTime   @default(now())
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@map("user_profiles")
 }
 
 model Crew {
@@ -44,82 +47,107 @@ model Crew {
   name        String
   description String?
   createdBy   User         @relation("CrewCreator", fields: [createdById], references: [id])
-  createdById String
+  createdById String       @map("created_by_id")
   members     CrewMember[]
   trips       Trip[]
-  createdAt   DateTime     @default(now())
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
 
   @@map("crews")
+  @@index([createdById])
 }
 
 // MANY-TO-MANY BETWEEN USERS AND CREWS  
 model CrewMember {
   id        String   @id @default(uuid())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  crew      Crew     @relation(fields: [crewId], references: [id])
-  crewId    String
-  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  crew      Crew     @relation(fields: [crewId], references: [id], onDelete: Cascade)
+  crewId    String   @map("crew_id")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("crew_members")
+  @@index([userId])
+  @@index([crewId])
 }
 
 model Trip {
   id          String        @id @default(uuid())
   name        String
   crew        Crew          @relation(fields: [crewId], references: [id])
-  crewId      String
+  crewId      String        @map("crew_id")
   planeInfo   PlaneInfo[]
   housingInfo HousingInfo[]
   activities  Activity[]
-  startDate   DateTime
-  endDate     DateTime
-  createdAt   DateTime      @default(now())
+  startDate   DateTime      @map("start_date")
+  endDate     DateTime      @map("end_date")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
 
   @@map("trips")
+  @@index([crewId])
 }
 
 model PlaneInfo {
   id                String   @id @default(uuid())
-  departureDateTime DateTime
-  arrivalDateTime   DateTime
+  departureDateTime DateTime @map("departure_date_time")
+  arrivalDateTime   DateTime @map("arrival_date_time")
   airport           String
-  reservationCode   String
-  trip              Trip     @relation(fields: [tripId], references: [id])
-  tripId            String
+  reservationCode   String   @map("reservation_code")
+  trip              Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId            String   @map("trip_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@map("plane_info")
+  @@index([tripId])
 }
 
 model HousingInfo {
   id               String   @id @default(uuid())
   address          String
-  checkinDateTime  DateTime
-  checkoutDateTime DateTime
-  trip             Trip     @relation(fields: [tripId], references: [id])
-  tripId           String
+  checkinDateTime  DateTime @map("checkin_date_time")
+  checkoutDateTime DateTime @map("checkout_date_time")
+  trip             Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId           String   @map("trip_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("housing_info")
+  @@index([tripId])
 }
 
 model Activity {
-  id       String   @id @default(uuid())
-  name     String
-  datetime DateTime
-  location String
-  trip     Trip     @relation(fields: [tripId], references: [id])
-  tripId   String
+  id        String   @id @default(uuid())
+  name      String
+  datetime  DateTime
+  location  String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId    String   @map("trip_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("activities")
+  @@index([tripId])
+}
+
+enum DocumentType {
+  PASSPORT
+  VISA
+  TICKET
+  OTHER
 }
 
 model Document {
-  id         String      @id @default(uuid())
-  type       String // "PASSPORT", "VISA", "TICKET"  
-  url        String // STORE IN S3/CLOUDFLARE R2  
-  expiryDate DateTime
-  profile    UserProfile @relation(fields: [profileId], references: [id])
-  profileId  String
+  id         String       @id @default(uuid())
+  type       DocumentType
+  url        String
+  expiryDate DateTime     @map("expiry_date")
+  profile    UserProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId  String       @map("profile_id")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
 
   @@map("documents")
+  @@index([profileId])
 }

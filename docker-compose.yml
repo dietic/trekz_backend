@@ -19,9 +19,8 @@ services:
     depends_on:
       - postgres
     volumes:
-      - .:/app # Mount your entire project directory
-      # - /app/node_modules # Use an anonymous volume for node_modules to avoid conflicts
-    command: sh -c "pnpm prisma migrate deploy && pnpm start:dev"
+      - .:/app
+    command: sh -c "yarn prisma migrate deploy && yarn start:dev"
 
 volumes:
   postgres_data:
